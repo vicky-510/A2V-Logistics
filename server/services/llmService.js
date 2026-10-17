@@ -37,10 +37,10 @@ function withTimeout(promise, ms, label) {
 
 class LLMService {
   constructor(config = {}) {
-    this.primaryKey = config.primaryKey ?? process.env.GEMINI_API_KEY_PRIMARY;
-    this.fallbackKey = config.fallbackKey ?? process.env.GEMINI_API_KEY_FALLBACK;
-    this.primaryModel = config.primaryModel ?? process.env.GEMINI_MODEL_PRIMARY ?? 'gemini-2.5-flash';
-    this.fallbackModel = config.fallbackModel ?? process.env.GEMINI_MODEL_FALLBACK ?? 'gemini-1.5-flash';
+    this.primaryKey = config.primaryKey || process.env.GEMINI_API_KEY_PRIMARY;
+    this.fallbackKey = config.fallbackKey || process.env.GEMINI_API_KEY_FALLBACK;
+    this.primaryModel = config.primaryModel || process.env.GEMINI_MODEL_PRIMARY || 'gemini-3.8-flash';
+    this.fallbackModel = config.fallbackModel || process.env.GEMINI_MODEL_FALLBACK || 'gemini-2.5-flash-lite';
     this.timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     // Allow injection of a custom client factory for testing.
     this.clientFactory = config.clientFactory ?? ((apiKey) => new GoogleGenerativeAI(apiKey));
