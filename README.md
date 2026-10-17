@@ -4,7 +4,7 @@
 
 ### A Conversational, Self-Healing Autonomous Supply Chain OS
 
-**Speak an order. Watch it ship. Watch it fix itself when things break.**
+**Type an order. Watch it ship. Watch it fix itself when things break.**
 
 ![Event](https://img.shields.io/badge/Event-Agent%20Wars-blueviolet?style=for-the-badge)
 ![Track](https://img.shields.io/badge/Track-Conversational%20Agent-00b4d8?style=for-the-badge)
@@ -76,10 +76,10 @@ Every minute lost means missed SLAs, unhappy customers and higher cost. Existing
 Godown  →  Packaging  →  Transit  →  Shipping
 ```
 
-You give a **voice or text command**. An AI agent runs the whole pipeline through **MCP tools**. When something goes wrong, the system **detects, diagnoses and fixes itself in real time, with no human intervention**, and tells you what it did.
+You type a **text command**. An AI agent runs the whole pipeline through **MCP tools**. When something goes wrong, the system **detects, diagnoses and fixes itself in real time, with no human intervention**, and shows you exactly what it did in a live log.
 
-> 🗣️ *"Ship 500 units from Godown A to Port Terminal 3."*
-> That one sentence triggers stock verification, packaging checks, route calculation, carrier dispatch and live monitoring.
+> 💬 *"Ship 200 units from Godown A to Port 1."*
+> That one sentence triggers stock verification, route calculation, cost estimation, and carrier dispatch.
 
 ---
 
@@ -189,24 +189,22 @@ sequenceDiagram
     actor User
     participant UI as React UI
     participant API as Express API
-    participant TEL as Telemetry
-    participant AI as Gemini Agent
     participant MCP as MCP Tools
+    participant AI as Gemini Agent
     participant DB as MongoDB Atlas
 
-    User->>UI: Click "Inject Roadblock"
-    UI->>API: POST /api/disruptions
-    API->>TEL: Emit error telemetry
-    TEL->>AI: Error payload (type, location, shipment)
-    AI->>MCP: logistics_debugger(payload)
-    MCP-->>AI: Root cause + affected shipments
-    AI->>MCP: calculate_shortest_path(avoid blocked edge)
-    MCP-->>AI: Secondary bypass route
-    AI->>MCP: dispatch_carrier(reroute)
-    MCP->>DB: Update shipment and write healing log
-    API-->>UI: Stream live terminal logs (SSE)
-    UI->>UI: Animate reroute on Map HUD
-    UI-->>User: 🔊 Speaks: "Roadblock detected. Rerouted via Route B. ETA +12 min."
+    User->>UI: Click "Simulate Disruption" (roadblock/breakdown/weather)
+    UI->>API: POST /api/disrupt
+    API->>MCP: logistics_debugger(shipmentId, eventType)
+    MCP-->>API: Diagnosis + recommendsReroute/recommendsCarrierReassignment
+    API->>AI: Ask Gemini to narrate the recovery plan
+    AI-->>API: Recovery narration (falls back to a secondary model on 429/timeout)
+    API->>MCP: calculate_shortest_path(avoid blocked edge)
+    MCP-->>API: Bypass route + new distance/ETA
+    API->>API: Recompute cost estimate (before vs. after)
+    API->>DB: Update shipment (route, carrier, cost) + write healing log
+    API-->>UI: Stream every step live (SSE)
+    UI->>UI: Animate the new route on the Map HUD
 ```
 
 ### The loop in four words: **Detect → Diagnose → Decide → Deploy**
