@@ -1,4 +1,4 @@
-const { callTool, getToolSpecs } = require('../mcp/tools');
+const { callTool, getToolSpecs, getShipment } = require('../mcp/tools');
 
 describe('MCP tools', () => {
   test('exposes exactly the four required tool specs', () => {
@@ -34,9 +34,24 @@ describe('MCP tools', () => {
       units: 50,
       route: [],
       etaMinutes: 30,
+      distanceKm: 27,
+      costEstimate: 132.5,
     });
     expect(result.status).toBe('dispatched');
     expect(result.carrier).toMatch(/^Carrier-\d+$/);
+    expect(result.distanceKm).toBe(27);
+    expect(result.costEstimate).toBe(132.5);
+  });
+
+  test('getShipment returns the dispatched shipment from the in-memory store', async () => {
+    const shipment = await getShipment('SHIP-TEST-1');
+    expect(shipment).not.toBeNull();
+    expect(shipment.costEstimate).toBe(132.5);
+  });
+
+  test('getShipment returns null for an unknown shipment', async () => {
+    const shipment = await getShipment('SHIP-DOES-NOT-EXIST');
+    expect(shipment).toBeNull();
   });
 
   test('logistics_debugger returns a roadblock diagnosis', async () => {
@@ -45,7 +60,26 @@ describe('MCP tools', () => {
       eventType: 'roadblock',
     });
     expect(result.recommendsReroute).toBe(true);
+    expect(result.recommendsCarrierReassignment).toBe(false);
     expect(result.diagnosis).toMatch(/roadblock/i);
+  });
+
+  test('logistics_debugger returns a breakdown diagnosis with carrier reassignment', async () => {
+    const result = await callTool('logistics_debugger', {
+      shipmentId: 'SHIP-TEST-1',
+      eventType: 'breakdown',
+    });
+    expect(result.recommendsCarrierReassignment).toBe(true);
+    expect(result.diagnosis).toMatch(/breakdown/i);
+  });
+
+  test('logistics_debugger returns a weather diagnosis', async () => {
+    const result = await callTool('logistics_debugger', {
+      shipmentId: 'SHIP-TEST-1',
+      eventType: 'weather',
+    });
+    expect(result.recommendsReroute).toBe(true);
+    expect(result.diagnosis).toMatch(/weather/i);
   });
 
   test('throws for an unknown tool name', async () => {

@@ -31,7 +31,7 @@ export default function ChatDispatcher({ onDispatched }) {
         ...prev,
         {
           role: 'agent',
-          text: `Dispatched ${order.units} units from ${order.origin} to ${order.destination} via ${result.dispatch.carrier}. Shipment ${result.shipmentId} is in transit (ETA ${result.route.etaMinutes} min).`,
+          text: `Dispatched ${order.units} units from ${order.origin} to ${order.destination} via ${result.dispatch.carrier}. Shipment ${result.shipmentId} is in transit (ETA ${result.route.etaMinutes} min, est. cost $${result.costEstimate.toFixed(2)}).`,
         },
       ]);
       toast.success(`Shipment ${result.shipmentId} dispatched`);

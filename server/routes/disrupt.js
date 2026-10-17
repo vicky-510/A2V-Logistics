@@ -7,7 +7,7 @@ module.exports = function createDisruptRouter(llmService) {
 
   /**
    * POST /api/disrupt
-   * body: { shipmentId, eventType: "roadblock" | "breakdown", description?, blockedEdge? }
+   * body: { shipmentId, eventType: "roadblock" | "breakdown" | "weather", description?, blockedEdge? }
    * Simulates a disruption and triggers the autonomous self-healing loop.
    */
   router.post('/', async (req, res) => {

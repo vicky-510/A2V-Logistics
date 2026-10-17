@@ -1,6 +1,7 @@
 const { invokeTool } = require('../mcp/server');
 const { emitLog } = require('../utils/eventBus');
 const { listNodes } = require('./routingService');
+const { estimateCost } = require('./costService');
 
 /**
  * Parses a natural-language dispatch order, e.g.
@@ -62,6 +63,9 @@ async function runDispatchPipeline({ units, origin, destination }) {
     message: `Route found: ${pathResult.path.join(' -> ')} (${pathResult.distanceKm} km, ETA ${pathResult.etaMinutes} min).`,
   });
 
+  const costEstimate = estimateCost({ distanceKm: pathResult.distanceKm, units });
+  emitLog({ shipmentId, actor: 'pipeline', message: `Estimated shipping cost: $${costEstimate.toFixed(2)}.` });
+
   emitLog({ shipmentId, actor: 'pipeline', message: `Dispatching carrier...` });
   const dispatch = await invokeTool('dispatch_carrier', {
     shipmentId,
@@ -70,10 +74,12 @@ async function runDispatchPipeline({ units, origin, destination }) {
     units,
     route: pathResult.route,
     etaMinutes: pathResult.etaMinutes,
+    distanceKm: pathResult.distanceKm,
+    costEstimate,
   });
   emitLog({ shipmentId, actor: 'pipeline', message: `Dispatched via ${dispatch.carrier}. Shipment ${shipmentId} is now in transit.` });
 
-  return { shipmentId, stock, route: pathResult, dispatch };
+  return { shipmentId, stock, route: pathResult, dispatch, costEstimate };
 }
 
 module.exports = { parseOrder, runDispatchPipeline, normalizeNode };

@@ -26,6 +26,10 @@ describe('dispatchService.runDispatchPipeline', () => {
     expect(result.shipmentId).toMatch(/^SHIP-/);
     expect(result.route.found).toBe(true);
     expect(result.dispatch.status).toBe('dispatched');
+    expect(typeof result.costEstimate).toBe('number');
+    expect(result.costEstimate).toBeGreaterThan(0);
+    expect(result.dispatch.costEstimate).toBe(result.costEstimate);
+    expect(result.dispatch.distanceKm).toBe(result.route.distanceKm);
   });
 
   test('rejects an order exceeding available stock', async () => {

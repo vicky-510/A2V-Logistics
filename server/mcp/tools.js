@@ -79,11 +79,13 @@ const tools = {
           units: { type: 'number' },
           route: { type: 'array' },
           etaMinutes: { type: 'number' },
+          distanceKm: { type: 'number' },
+          costEstimate: { type: 'number' },
         },
         required: ['shipmentId', 'originGodownId', 'destination', 'units'],
       },
     },
-    async execute({ shipmentId, originGodownId, destination, units, route = [], etaMinutes = null }) {
+    async execute({ shipmentId, originGodownId, destination, units, route = [], etaMinutes = null, distanceKm = null, costEstimate = null }) {
       const carrier = `Carrier-${Math.floor(Math.random() * 900 + 100)}`;
       const record = {
         shipmentId,
@@ -92,6 +94,8 @@ const tools = {
         units,
         route,
         etaMinutes,
+        distanceKm,
+        costEstimate,
         carrier,
         status: 'dispatched',
         currentPosition: route[0] || null,
@@ -108,7 +112,7 @@ const tools = {
   logistics_debugger: {
     spec: {
       name: 'logistics_debugger',
-      description: 'Diagnose a telemetry disruption event (roadblock/breakdown) and recommend a recovery action.',
+      description: 'Diagnose a telemetry disruption event (roadblock/breakdown/weather) and recommend a recovery action.',
       parameters: {
         type: 'object',
         properties: {
@@ -120,13 +124,14 @@ const tools = {
       },
     },
     async execute({ shipmentId, eventType, description }) {
+      const DIAGNOSES = {
+        roadblock: `Roadblock detected on active route for shipment ${shipmentId}. Recommend bypass route excluding the blocked edge.`,
+        breakdown: `Carrier breakdown detected for shipment ${shipmentId}. Recommend immediate carrier reassignment and reroute.`,
+        weather: `Severe weather detected along the active route for shipment ${shipmentId}. Recommend a safer bypass route and revised ETA.`,
+      };
       const diagnosis =
-        eventType === 'roadblock'
-          ? `Roadblock detected on active route for shipment ${shipmentId}. Recommend bypass route excluding blocked edge.`
-          : eventType === 'breakdown'
-          ? `Carrier breakdown detected for shipment ${shipmentId}. Recommend immediate carrier reassignment and reroute.`
-          : `Disruption (${eventType}) detected for shipment ${shipmentId}: ${description || 'no details'}.`;
-      return { shipmentId, eventType, diagnosis, recommendsReroute: true };
+        DIAGNOSES[eventType] || `Disruption (${eventType}) detected for shipment ${shipmentId}: ${description || 'no details'}.`;
+      return { shipmentId, eventType, diagnosis, recommendsReroute: true, recommendsCarrierReassignment: eventType === 'breakdown' };
     },
   },
 };
@@ -141,4 +146,12 @@ async function callTool(name, args) {
   return tool.execute(args);
 }
 
-module.exports = { tools, getToolSpecs, callTool, memoryStore };
+/** Looks up a shipment record from MongoDB (or the in-memory fallback). */
+async function getShipment(shipmentId) {
+  if (isDbConnected()) {
+    return Shipment.findOne({ shipmentId });
+  }
+  return memoryStore.shipments.get(shipmentId) || null;
+}
+
+module.exports = { tools, getToolSpecs, callTool, memoryStore, getShipment };

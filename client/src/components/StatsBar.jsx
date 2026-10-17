@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Package, Truck, Timer, HeartPulse } from 'lucide-react';
+import { Package, Truck, Timer, HeartPulse, DollarSign } from 'lucide-react';
 import { api } from '../lib/api';
 
 // Static class strings (not interpolated) so Tailwind's JIT scanner can find them.
@@ -57,12 +57,15 @@ export default function StatsBar({ refreshKey }) {
   const etas = shipments.map((s) => s.etaMinutes).filter((n) => typeof n === 'number');
   const avgEta = etas.length ? Math.round(etas.reduce((a, b) => a + b, 0) / etas.length) : 0;
   const healed = healingLogs.length;
+  const costs = shipments.map((s) => s.costEstimate).filter((n) => typeof n === 'number');
+  const totalCost = costs.reduce((a, b) => a + b, 0);
 
   return (
     <div className="flex flex-wrap gap-3" data-testid="stats-bar">
       <StatTile icon={Package} label="Total shipments" value={total} accent="accent" />
       <StatTile icon={Truck} label="Active shipments" value={active} accent="accent2" />
       <StatTile icon={Timer} label="Avg ETA (min)" value={avgEta || '—'} accent="warn" />
+      <StatTile icon={DollarSign} label="Total shipping cost" value={`$${totalCost.toFixed(2)}`} accent="accent" />
       <StatTile icon={HeartPulse} label="Self-healing events" value={healed} accent="danger" />
     </div>
   );

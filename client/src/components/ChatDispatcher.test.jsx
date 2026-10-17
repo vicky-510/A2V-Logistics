@@ -20,6 +20,7 @@ describe('ChatDispatcher', () => {
           shipmentId: 'SHIP-1',
           dispatch: { carrier: 'Carrier-204' },
           route: { etaMinutes: 25 },
+          costEstimate: 87.5,
         },
       }),
     });

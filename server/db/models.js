@@ -23,6 +23,8 @@ const ShipmentSchema = new Schema({
   currentPosition: { lat: Number, lng: Number },
   carrier: String,
   etaMinutes: Number,
+  distanceKm: Number,
+  costEstimate: Number,
 }, { timestamps: true });
 
 const TelemetryEventSchema = new Schema({
@@ -46,6 +48,8 @@ const HealingLogSchema = new Schema({
   modelUsed: String,
   fallbackTriggered: { type: Boolean, default: false },
   outcome: { type: String, enum: ['healed', 'failed', 'in_progress'], default: 'in_progress' },
+  costBefore: Number,
+  costAfter: Number,
 }, { timestamps: true });
 
 const Inventory = mongoose.models.Inventory || mongoose.model('Inventory', InventorySchema);

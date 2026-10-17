@@ -11,8 +11,8 @@ describe('StatsBar', () => {
       return Promise.resolve({
         ok: true,
         json: async () => [
-          { shipmentId: 'SHIP-1', status: 'in_transit', etaMinutes: 20 },
-          { shipmentId: 'SHIP-2', status: 'delivered', etaMinutes: 40 },
+          { shipmentId: 'SHIP-1', status: 'in_transit', etaMinutes: 20, costEstimate: 60 },
+          { shipmentId: 'SHIP-2', status: 'delivered', etaMinutes: 40, costEstimate: 40 },
         ],
       });
     });
@@ -32,5 +32,6 @@ describe('StatsBar', () => {
     expect(within(bar).getByText('2')).toBeInTheDocument(); // total shipments
     expect(within(bar).getByText('30')).toBeInTheDocument(); // avg eta (20+40)/2
     expect(within(bar).getAllByText('1').length).toBe(2); // active shipments + healing events
+    expect(within(bar).getByText('$100.00')).toBeInTheDocument(); // total cost
   });
 });

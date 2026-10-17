@@ -46,6 +46,7 @@ export default function ShipmentHistory({ refreshKey }) {
               <p className="text-slate-200 truncate">{s.shipmentId}</p>
               <p className="text-slate-500 truncate">
                 {s.originGodownId} → {s.destination} · {s.units} units
+                {typeof s.costEstimate === 'number' && ` · $${s.costEstimate.toFixed(2)}`}
               </p>
             </div>
             <StatusBadge status={s.status} />

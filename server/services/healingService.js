@@ -1,20 +1,28 @@
 const { Shipment, TelemetryEvent, HealingLog } = require('../db/models');
 const { invokeTool } = require('../mcp/server');
+const { getShipment } = require('../mcp/tools');
 const { emitLog } = require('../utils/eventBus');
+const { estimateCost } = require('./costService');
 
 /**
  * The self-healing feedback loop.
- * Given a simulated disruption on a shipment's active route, this:
+ * Given a simulated disruption on a shipment's active route (roadblock,
+ * breakdown, or weather), this:
  *  1. Diagnoses the failure via the `logistics_debugger` MCP tool.
  *  2. Uses the Gemini LLM (with fallback) to narrate/confirm the diagnosis.
- *  3. Recalculates a bypass route via `calculate_shortest_path`, excluding the blocked edge.
- *  4. Persists the updated shipment + a HealingLog of every step.
- *  5. Emits each step as a live log event for the frontend terminal panel.
+ *  3. For a breakdown, reassigns a new carrier.
+ *  4. Recalculates a bypass route via `calculate_shortest_path`, excluding
+ *     the blocked edge (for roadblocks/weather).
+ *  5. Compares the shipping cost before vs. after the reroute.
+ *  6. Persists the updated shipment + a HealingLog of every step.
+ *  7. Emits each step as a live log event for the frontend terminal panel.
  */
 async function isDbConnected() {
   const mongoose = require('mongoose');
   return mongoose.connection.readyState === 1;
 }
+
+const DEFAULT_UNITS_IF_UNKNOWN = 100;
 
 async function runSelfHealingLoop({ shipmentId, eventType, description, blockedEdge, llmService }) {
   const steps = [];
@@ -49,11 +57,18 @@ async function runSelfHealingLoop({ shipmentId, eventType, description, blockedE
     }
   }
 
-  // Step 3: find current shipment route to determine origin/destination for reroute
-  let shipment = null;
-  if (await isDbConnected()) {
-    shipment = await Shipment.findOne({ shipmentId });
+  const shipment = await getShipment(shipmentId);
+  const units = shipment?.units ?? DEFAULT_UNITS_IF_UNKNOWN;
+  const costBefore = shipment?.costEstimate ?? null;
+
+  // Step 3: for a breakdown, reassign the carrier before touching the route
+  let carrier = shipment?.carrier ?? null;
+  if (diagnosis.recommendsCarrierReassignment) {
+    carrier = `Carrier-${Math.floor(Math.random() * 900 + 100)}`;
+    log('logistics_debugger', `Carrier reassigned to ${carrier}.`);
   }
+
+  // Step 4: find current shipment route to determine origin/destination for reroute
   const origin = shipment?.route?.[0]?.label || 'Godown A';
   const destination = shipment?.destination || 'Port 3';
 
@@ -65,17 +80,40 @@ async function runSelfHealingLoop({ shipmentId, eventType, description, blockedE
 
   if (!pathResult.found) {
     log('calculate_shortest_path', `No bypass route found for ${origin} -> ${destination}.`);
-    const healingLog = await persistHealingLog({ shipmentId, steps, diagnosis: diagnosis.diagnosis, newRoute: [], modelUsed, fallbackTriggered, outcome: 'failed' });
+    const healingLog = await persistHealingLog({
+      shipmentId, steps, diagnosis: diagnosis.diagnosis, newRoute: [], modelUsed, fallbackTriggered, outcome: 'failed', costBefore, costAfter: null,
+    });
     return { healed: false, steps, healingLog };
   }
 
   log('calculate_shortest_path', `Bypass route found: ${pathResult.path.join(' -> ')} (${pathResult.distanceKm} km, ETA ${pathResult.etaMinutes} min).`);
 
-  // Step 4: persist updated route on the shipment
+  // Step 5: cost comparison
+  const costAfter = estimateCost({ distanceKm: pathResult.distanceKm, units });
+  if (costBefore !== null) {
+    const delta = costAfter - costBefore;
+    const direction = delta > 0 ? 'increased' : delta < 0 ? 'decreased' : 'unchanged';
+    log(
+      'cost-estimator',
+      `Shipping cost ${direction}: $${costBefore.toFixed(2)} -> $${costAfter.toFixed(2)} (${delta >= 0 ? '+' : ''}$${delta.toFixed(2)}).`
+    );
+  } else {
+    log('cost-estimator', `Recalculated shipping cost for the bypass route: $${costAfter.toFixed(2)}.`);
+  }
+
+  // Step 6: persist updated route (and carrier, if reassigned) on the shipment
   if (await isDbConnected()) {
     await Shipment.findOneAndUpdate(
       { shipmentId },
-      { route: pathResult.route, etaMinutes: pathResult.etaMinutes, status: 'in_transit', currentPosition: pathResult.route[0] },
+      {
+        route: pathResult.route,
+        etaMinutes: pathResult.etaMinutes,
+        distanceKm: pathResult.distanceKm,
+        costEstimate: costAfter,
+        status: 'in_transit',
+        currentPosition: pathResult.route[0],
+        ...(carrier ? { carrier } : {}),
+      },
       { upsert: true }
     );
     await TelemetryEvent.findOneAndUpdate(
@@ -94,13 +132,15 @@ async function runSelfHealingLoop({ shipmentId, eventType, description, blockedE
     modelUsed,
     fallbackTriggered,
     outcome: 'healed',
+    costBefore,
+    costAfter,
   });
 
-  return { healed: true, steps, newRoute: pathResult.route, healingLog };
+  return { healed: true, steps, newRoute: pathResult.route, healingLog, costBefore, costAfter };
 }
 
-async function persistHealingLog({ shipmentId, steps, diagnosis, newRoute, modelUsed, fallbackTriggered, outcome }) {
-  const doc = { shipmentId, steps, diagnosis, newRoute, modelUsed, fallbackTriggered, outcome };
+async function persistHealingLog({ shipmentId, steps, diagnosis, newRoute, modelUsed, fallbackTriggered, outcome, costBefore, costAfter }) {
+  const doc = { shipmentId, steps, diagnosis, newRoute, modelUsed, fallbackTriggered, outcome, costBefore, costAfter };
   if (await isDbConnected()) {
     return HealingLog.create(doc);
   }
