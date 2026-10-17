@@ -24,6 +24,16 @@
 
 ---
 
+## 🔑 Reviewer Access
+
+- **Live app:** https://logitechs.netlify.app/
+- **Backend API:** https://a2-v-logistics.vercel.app/ (`/api/health` to check it's up)
+- **Access code to log in:** `autoroute2026`
+
+No username — just enter the code on the login screen. See [`SETUP.md`](./SETUP.md) for full local setup, run, and test instructions.
+
+---
+
 ## 📑 Table of Contents
 
 1. [The Problem](#-the-problem)
@@ -412,60 +422,49 @@ flowchart LR
 - A Google Maps API key (optional, simulation mode works without it)
 - A Chromium-based browser (best Web Speech API support)
 
+> ℹ️ The actual repo folders are `server/` (backend) and `client/` (frontend) — not `backend/`/`frontend/` as in the diagram above. Full, accurate setup/run/test commands are in **[`SETUP.md`](./SETUP.md)**; the short version:
+
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/<your-username>/autoroute-ai.git
-cd autoroute-ai
+git clone https://github.com/vicky-510/A2V-Logistics.git
+cd A2V-Logistics
 ```
 
 ### 2. Configure environment variables
 
-Create `backend/.env` from `.env.example`:
-
-```env
-# Server
-PORT=5000
-
-# Database
-MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/autoroute
-
-# Gemini
-GEMINI_API_KEY=your_primary_key
-GEMINI_BACKUP_API_KEY=your_backup_key
-GEMINI_PRIMARY_MODEL=gemini-2.5-flash
-GEMINI_FALLBACK_MODEL=gemini-2.5-flash-lite
-
-# Maps
-GOOGLE_MAPS_API_KEY=your_maps_key
-USE_SIMULATED_MAPS=true
-```
-
-Create `frontend/.env`:
-
-```env
-VITE_API_BASE_URL=http://localhost:5000
+```bash
+cd server
+cp .env.example .env   # fill in MongoDB URI, Gemini keys, APP_ACCESS_CODE, AUTH_TOKEN_SECRET
 ```
 
 ### 3. Run the backend
 
 ```bash
-cd backend
+cd server
 npm install
-npm run dev
+npm run dev       # http://localhost:5000
+npm run seed      # optional: demo inventory + a sample shipment
 ```
 
 ### 4. Run the frontend
 
 ```bash
-cd frontend
+cd client
 npm install
-npm run dev
+npm run dev       # http://localhost:5173
 ```
 
-Open **http://localhost:5173** and try:
+Open **http://localhost:5173**, log in with your `APP_ACCESS_CODE`, and try:
 
-> 🎙️ *"Ship 200 units from Godown A to Port 3."*
+> *"Ship 200 units from Godown A to Port 1"*
+
+### 5. Run the tests
+
+```bash
+cd server && npm test   # Jest — backend
+cd client && npm test   # Vitest — frontend
+```
 
 ---
 
@@ -473,11 +472,11 @@ Open **http://localhost:5173** and try:
 
 | Part | Platform | Config file | Notes |
 |------|----------|-------------|-------|
-| Frontend | **Netlify** | `frontend/netlify.toml` | Build: `npm run build`, publish: `dist` |
-| Backend | **Vercel** | `backend/vercel.json` | Add all `.env` variables in the Vercel dashboard |
+| Frontend | **Netlify** | `netlify.toml` | Build: `npm run build`, publish: `dist`, proxies `/api/*` to Vercel |
+| Backend | **Vercel** | `server/vercel.json` | Root Directory must be `server`, Framework Preset `Other`. Add all env vars (see `.env.example`) in the Vercel dashboard |
 | Database | **MongoDB Atlas** | n/a | Allow Vercel's IPs (or `0.0.0.0/0` for the demo) |
 
-After deployment, set `VITE_API_BASE_URL` in Netlify to your Vercel backend URL.
+See [`SETUP.md`](./SETUP.md) for the full deployment walkthrough and troubleshooting notes.
 
 ---
 
