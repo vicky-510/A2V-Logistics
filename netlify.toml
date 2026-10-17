@@ -1,0 +1,20 @@
+[build]
+  base = "client"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Proxy API calls to the Vercel-hosted backend so the client can call
+# relative /api/* paths in both local dev and production.
+[[redirects]]
+  from = "/api/*"
+  to = "https://<your-vercel-deployment>.vercel.app/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
