@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Zap, Loader2 } from 'lucide-react';
 import { api } from '../lib/api';
+import { toast } from '../lib/toast';
 
 export default function DisruptionButton({ shipmentId, onHealed }) {
   const [loading, setLoading] = useState(false);
@@ -12,9 +13,13 @@ export default function DisruptionButton({ shipmentId, onHealed }) {
     setError(null);
     try {
       const result = await api.disrupt(shipmentId, 'roadblock', 'Simulated roadblock injected by operator', 'Godown A--Hub 1');
+      toast[result.healed ? 'success' : 'error'](
+        result.healed ? 'Self-healing loop rerouted the shipment' : 'Self-healing loop could not find a bypass route'
+      );
       onHealed?.(result);
     } catch (err) {
       setError(err.message);
+      toast.error(err.message);
     } finally {
       setLoading(false);
     }

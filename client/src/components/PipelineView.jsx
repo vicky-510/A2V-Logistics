@@ -1,4 +1,5 @@
-import { Warehouse, PackageCheck, Route, Truck } from 'lucide-react';
+import { Warehouse, PackageCheck, Route, Truck, Check } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const STAGES = [
   { key: 'godown', label: 'Godown', icon: Warehouse },
@@ -22,24 +23,41 @@ export default function PipelineView({ activeStage = -1 }) {
           return (
             <div key={stage.key} className="flex-1 flex items-center">
               <div className="flex flex-col items-center gap-2">
-                <div
+                <motion.div
                   data-testid={`stage-${stage.key}`}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center border ${
+                  animate={isDone ? { scale: [1, 1.15, 1] } : { scale: 1 }}
+                  transition={{ duration: 0.4 }}
+                  className={`relative w-10 h-10 rounded-full flex items-center justify-center border ${
                     isDone
                       ? 'border-hud-accent2 text-hud-accent2 bg-hud-accent2/10'
                       : 'border-hud-border text-slate-500'
                   } ${isCurrent ? 'animate-pulseGlow' : ''}`}
                 >
-                  <Icon size={18} />
-                </div>
+                  <AnimatePresence mode="wait">
+                    {isDone ? (
+                      <motion.span key="check" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                        <Check size={18} />
+                      </motion.span>
+                    ) : (
+                      <motion.span key="icon" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                        <Icon size={18} />
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
                 <span className={`text-xs font-mono ${isDone ? 'text-hud-accent2' : 'text-slate-500'}`}>
                   {stage.label}
                 </span>
               </div>
               {i < STAGES.length - 1 && (
-                <div
-                  className={`flex-1 h-px mx-2 ${i < activeStage ? 'bg-hud-accent2' : 'bg-hud-border'}`}
-                />
+                <div className="flex-1 h-px mx-2 bg-hud-border overflow-hidden">
+                  <motion.div
+                    className="h-full bg-hud-accent2"
+                    initial={{ width: 0 }}
+                    animate={{ width: i < activeStage ? '100%' : 0 }}
+                    transition={{ duration: 0.5 }}
+                  />
+                </div>
               )}
             </div>
           );

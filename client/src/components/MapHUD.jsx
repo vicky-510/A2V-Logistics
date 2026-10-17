@@ -1,4 +1,5 @@
 import { AlertTriangle } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 // Normalized SVG-space positions mirroring the backend's logical node graph
 // (server/services/routingService.js). Kept in sync by name, not by lat/lng,
@@ -34,6 +35,8 @@ export default function MapHUD({ activeRoute = [], blockedEdge = null, vehiclePo
   const activeEdges = new Set(
     activeRoute.slice(0, -1).map((label, i) => edgeKey(label, activeRoute[i + 1]))
   );
+  const routePoints = activeRoute.map((name) => NODE_POSITIONS[name]).filter(Boolean);
+  const routePointsStr = routePoints.map((p) => `${p.x},${p.y}`).join(' ');
 
   return (
     <div className="bg-hud-panel border border-hud-border rounded-lg p-4">
@@ -52,12 +55,29 @@ export default function MapHUD({ activeRoute = [], blockedEdge = null, vehiclePo
               y1={pa.y}
               x2={pb.x}
               y2={pb.y}
-              stroke={isBlocked ? '#ef4444' : isActive ? '#22d3ee' : '#1c2433'}
+              stroke={isBlocked ? '#ef4444' : isActive ? '#1c3a40' : '#1c2433'}
               strokeWidth={isActive || isBlocked ? 3 : 1.5}
               strokeDasharray={isBlocked ? '6 4' : undefined}
             />
           );
         })}
+
+        {routePoints.length > 1 && (
+          <polyline
+            key={routePointsStr}
+            points={routePointsStr}
+            fill="none"
+            stroke="#22d3ee"
+            strokeWidth={3}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            pathLength={1}
+            strokeDasharray={1}
+            className="animate-drawRoute"
+            style={{ strokeDashoffset: 1 }}
+            data-testid="route-line"
+          />
+        )}
 
         {blockedEdge &&
           (() => {
@@ -92,7 +112,17 @@ export default function MapHUD({ activeRoute = [], blockedEdge = null, vehiclePo
           </g>
         ))}
 
-        {vehiclePosition && NODE_POSITIONS[vehiclePosition] && (
+        {routePoints.length > 1 && (
+          <motion.circle
+            data-testid="vehicle-marker"
+            r={5}
+            fill="#34d399"
+            animate={{ cx: routePoints.map((p) => p.x), cy: routePoints.map((p) => p.y) }}
+            transition={{ duration: routePoints.length * 1.2, repeat: Infinity, ease: 'linear' }}
+          />
+        )}
+
+        {routePoints.length <= 1 && vehiclePosition && NODE_POSITIONS[vehiclePosition] && (
           <circle
             data-testid="vehicle-marker"
             cx={NODE_POSITIONS[vehiclePosition].x}

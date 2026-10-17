@@ -58,24 +58,26 @@ npm run dev       # http://localhost:5173, proxies /api to http://localhost:5000
 ### Test
 
 ```bash
-npm test          # Vitest + React Testing Library — 14 tests across all components
+npm test          # Vitest + React Testing Library — 21 tests across all components
 ```
 
 ### Key components
 
 - `LoginScreen` — single-access-code login gate (no username). Shown until a valid token is stored.
-- `ChatDispatcher` — text-based conversational order input (e.g. "Ship 200 units from Godown A to Port 1").
-- `PipelineView` — animated Godown → Packaging → Routing → Dispatch step tracker.
-- `MapHUD` — SVG node-graph map showing the active route and any injected roadblock.
+- `ChatDispatcher` — conversational order input, quick-command chips for common orders, and a typing indicator while the pipeline runs.
+- `PipelineView` — animated (framer-motion) Godown → Packaging → Routing → Dispatch step tracker.
+- `MapHUD` — SVG node-graph map with an animated route draw-in and a vehicle marker that travels the active route in real time.
 - `TerminalLog` — live-streamed self-healing/pipeline log panel (via SSE).
 - `DisruptionButton` — "Simulate Disruption" trigger that calls `/api/disrupt` and kicks off the self-healing loop.
+- `StatsBar` — live KPI row (total shipments, active shipments, avg ETA, self-healing event count), refreshed after every dispatch/heal and on a 15s poll.
+- `ShipmentHistory` — status-badged list of all shipments, same refresh cadence as `StatsBar`.
+- `ConnectionBadge` — LIVE / CONNECTING / RECONNECTING indicator tied to the SSE stream's actual connection state.
+- `Toaster` / `lib/toast.js` — lightweight toast notifications for dispatch, disruption, and error events; no external dependency.
 
 ## Deployment
 
 - **Frontend → Netlify**: `netlify.toml` builds `client/` and proxies `/api/*` to the Vercel backend.
-- **Backend → Vercel**: the project's **Root Directory must be set to `server/`** in the Vercel dashboard (Project Settings → General). `server/api/[[...slug]].js` uses Vercel's optional-catch-all filename convention, so it's auto-detected as a single serverless function handling every `/api/*` request — no `vercel.json` needed. Set these as Vercel environment variables: `MONGODB_URI`, `GEMINI_API_KEY_PRIMARY`, `GEMINI_API_KEY_FALLBACK`, `GEMINI_MODEL_PRIMARY`, `GEMINI_MODEL_FALLBACK`, `CORS_ORIGIN` (your Netlify URL), `APP_ACCESS_CODE`, `AUTH_TOKEN_SECRET`.
-
-  If Root Directory is left at the repo root instead, Vercel won't find `server/package.json` to install dependencies, and won't auto-detect the `api/` folder since it's nested under `server/` rather than at the project root — this is what causes it to fall back to serving raw source files instead of running the API.
+- **Backend → Vercel**: the project's **Root Directory must be set to `server/`** in the Vercel dashboard (Project Settings → General), with **Framework Preset set to "Other"** (not an auto-detected "Express.js" preset, which wrongly tries to invoke `app.js` directly as a handler). `server/api/index.js` is the serverless entry point; `server/vercel.json` adds a `rewrites` rule (`/api/:path*` → `/api/index`) so nested paths like `/api/auth/login` correctly reach it — Vercel's bracket catch-all filename convention (`[[...slug]].js`) only matches a single path segment outside of Next.js, so a rewrite is used instead. `server/public/index.html` exists so Vercel's static Output Directory has something to serve besides the whole source tree (its default, `public` if present else `.`, would otherwise expose raw source files for non-`/api` paths). Set these as Vercel environment variables: `MONGODB_URI`, `GEMINI_API_KEY_PRIMARY`, `GEMINI_API_KEY_FALLBACK`, `GEMINI_MODEL_PRIMARY`, `GEMINI_MODEL_FALLBACK`, `CORS_ORIGIN` (comma-separated list of allowed origins, e.g. your Netlify URL), `APP_ACCESS_CODE`, `AUTH_TOKEN_SECRET`.
 
 ### Known limitation
 

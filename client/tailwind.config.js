@@ -17,6 +17,7 @@ export default {
       },
       fontFamily: {
         mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+        display: ['"Space Grotesk"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
       keyframes: {
         pulseGlow: {
@@ -26,10 +27,19 @@ export default {
         dash: {
           to: { strokeDashoffset: 0 },
         },
+        drawRoute: {
+          to: { strokeDashoffset: 0 },
+        },
+        floatIn: {
+          from: { opacity: 0, transform: 'translateY(6px)' },
+          to: { opacity: 1, transform: 'translateY(0)' },
+        },
       },
       animation: {
         pulseGlow: 'pulseGlow 1.6s ease-in-out infinite',
         dash: 'dash 2s linear forwards',
+        drawRoute: 'drawRoute 1.2s ease-out forwards',
+        floatIn: 'floatIn 0.3s ease-out',
       },
     },
   },

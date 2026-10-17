@@ -4,6 +4,13 @@
 
 body {
   background-color: #05070c;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(34, 211, 238, 0.08), transparent),
+    radial-gradient(ellipse 80% 50% at 80% 110%, rgba(52, 211, 153, 0.06), transparent),
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: auto, auto, 32px 32px, 32px 32px;
+  min-height: 100vh;
 }
 
 ::-webkit-scrollbar {
@@ -13,4 +20,18 @@ body {
 ::-webkit-scrollbar-thumb {
   background-color: #1c2433;
   border-radius: 4px;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.animate-toast-in {
+  animation: toast-in 0.25s ease-out;
 }

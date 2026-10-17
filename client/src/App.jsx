@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import LoginScreen from './components/LoginScreen';
 import Dashboard from './components/Dashboard';
+import Toaster from './components/Toaster';
 import { getToken, clearToken } from './lib/auth';
 import { onUnauthorized } from './lib/api';
 
@@ -14,9 +15,10 @@ export default function App() {
     });
   }, []);
 
-  if (!authed) {
-    return <LoginScreen onLoggedIn={() => setAuthed(true)} />;
-  }
-
-  return <Dashboard />;
+  return (
+    <>
+      <Toaster />
+      {authed ? <Dashboard onLogout={() => setAuthed(false)} /> : <LoginScreen onLoggedIn={() => setAuthed(true)} />}
+    </>
+  );
 }

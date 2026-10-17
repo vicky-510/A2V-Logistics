@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { Lock, Loader2 } from 'lucide-react';
 import { api } from '../lib/api';
 import { setToken } from '../lib/auth';
@@ -26,15 +27,19 @@ export default function LoginScreen({ onLoggedIn }) {
 
   return (
     <div className="min-h-screen bg-hud-bg flex items-center justify-center p-6">
-      <form
+      <motion.form
+        initial={{ opacity: 0, y: 12, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
         onSubmit={handleSubmit}
-        className="w-full max-w-sm bg-hud-panel border border-hud-border rounded-lg p-6 flex flex-col gap-4"
+        className="w-full max-w-sm bg-hud-panel border border-hud-border rounded-xl p-8 flex flex-col gap-4 shadow-[0_0_40px_-12px_rgba(34,211,238,0.25)]"
       >
-        <div className="flex flex-col items-center gap-2 mb-2">
-          <div className="w-12 h-12 rounded-full bg-hud-accent/10 border border-hud-accent flex items-center justify-center text-hud-accent">
-            <Lock size={20} />
+        <div className="flex flex-col items-center gap-3 mb-2">
+          <div className="relative w-14 h-14 rounded-full bg-hud-accent/10 border border-hud-accent flex items-center justify-center text-hud-accent">
+            <span className="absolute inset-0 rounded-full border border-hud-accent/40 animate-pulseGlow" />
+            <Lock size={22} />
           </div>
-          <h1 className="text-lg font-bold font-mono tracking-wide text-hud-accent">AUTOROUTE AI</h1>
+          <h1 className="text-2xl font-bold tracking-wide font-display text-hud-accent">AutoRoute AI</h1>
           <p className="text-xs text-slate-500 font-mono">Enter access code to continue</p>
         </div>
 
@@ -54,11 +59,11 @@ export default function LoginScreen({ onLoggedIn }) {
         <button
           type="submit"
           disabled={loading || !code}
-          className="flex items-center justify-center gap-2 bg-hud-accent/10 border border-hud-accent text-hud-accent rounded px-4 py-2 font-mono text-sm hover:bg-hud-accent/20 disabled:opacity-40"
+          className="flex items-center justify-center gap-2 bg-hud-accent/10 border border-hud-accent text-hud-accent rounded px-4 py-2 font-mono text-sm hover:bg-hud-accent/20 disabled:opacity-40 transition-colors"
         >
           {loading ? <Loader2 className="animate-spin" size={16} /> : 'Enter'}
         </button>
-      </form>
+      </motion.form>
     </div>
   );
 }
