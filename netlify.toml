@@ -10,7 +10,7 @@
 # relative /api/* paths in both local dev and production.
 [[redirects]]
   from = "/api/*"
-  to = "https://<your-vercel-deployment>.vercel.app/api/:splat"
+  to = "https://a2-v-logistics.vercel.app/api/:splat"
   status = 200
   force = true
 
