@@ -325,45 +325,65 @@ autoroute-ai/
 
 ## 🗄️ Database Schema
 
-```mermaid
-erDiagram
-    INVENTORY ||--o{ SHIPMENT : "supplies"
-    SHIPMENT ||--o{ TELEMETRY : "emits"
-    SHIPMENT ||--o{ HEALING_LOG : "is repaired by"
-    TELEMETRY ||--o| HEALING_LOG : "triggers"
+### Relationships
 
-    INVENTORY {
-        string godownId
-        string sku
-        number quantity
-        number reserved
-    }
-    SHIPMENT {
-        string shipmentId
-        string origin
-        string destination
-        number units
-        string status
-        array route
-        string carrierId
-        number etaMinutes
-    }
-    TELEMETRY {
-        string shipmentId
-        string eventType
-        string location
-        string severity
-        date timestamp
-    }
-    HEALING_LOG {
-        string shipmentId
-        string diagnosis
-        array oldRoute
-        array newRoute
-        string resolution
-        date resolvedAt
-    }
+```mermaid
+flowchart LR
+    INV["📦 Inventory<br/>stock per godown"] -->|supplies| SHP["🚛 Shipment<br/>order and route"]
+    SHP -->|emits| TEL["📡 Telemetry<br/>disruption events"]
+    TEL -->|triggers| HL["🩹 HealingLog<br/>diagnosis and fix"]
+    SHP -->|is repaired by| HL
+
+    style INV fill:#264653,color:#fff
+    style SHP fill:#2a9d8f,color:#fff
+    style TEL fill:#e76f51,color:#fff
+    style HL fill:#8E75B2,color:#fff
 ```
+
+### Collections
+
+**`Inventory`**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `godownId` | String | Godown identifier (e.g. `GODOWN-A`) |
+| `sku` | String | Product code |
+| `quantity` | Number | Units in stock |
+| `reserved` | Number | Units reserved for shipments |
+
+**`Shipment`**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `shipmentId` | String | Unique shipment ID |
+| `origin` | String | Source godown |
+| `destination` | String | Target port or location |
+| `units` | Number | Quantity shipped |
+| `status` | String | `pending`, `in-transit`, `rerouted`, `delivered` |
+| `route` | Array | Ordered list of route nodes |
+| `carrierId` | String | Assigned vehicle |
+| `etaMinutes` | Number | Estimated time of arrival |
+
+**`Telemetry`**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `shipmentId` | String | Affected shipment |
+| `eventType` | String | `roadblock`, `breakdown`, `stock-delay` |
+| `location` | String | Where the event happened |
+| `severity` | String | `low`, `medium`, `high` |
+| `timestamp` | Date | When it was detected |
+
+**`HealingLog`**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `shipmentId` | String | Shipment that was repaired |
+| `diagnosis` | String | Root cause found by the agent |
+| `oldRoute` | Array | Route before the fix |
+| `newRoute` | Array | Bypass route after the fix |
+| `resolution` | String | What the agent did |
+| `resolvedAt` | Date | When the fix was applied |
 
 ---
 
@@ -461,11 +481,6 @@ After deployment, set `VITE_API_BASE_URL` in Netlify to your Vercel backend URL.
 
 ---
 
-
-
----
-
-
 ---
 
 ## 👥 Team
@@ -475,11 +490,8 @@ After deployment, set `VITE_API_BASE_URL` in Netlify to your Vercel backend URL.
 - **Asvika**
 
 
-
 ---
 
 <div align="center">
-
-⭐ **If you like this project, give it a star!** ⭐
 
 </div>
