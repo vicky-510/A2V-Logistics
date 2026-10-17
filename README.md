@@ -87,14 +87,15 @@ You give a **voice or text command**. An AI agent runs the whole pipeline throug
 
 | # | Feature | What it does |
 |---|---------|--------------|
-| 1 | 🎙️ **Voice and Text Dispatcher** | Speak or type natural-language orders. Live audio waveform and speech-to-text transcript. |
+| 1 | 💬 **Conversational Dispatcher** | Type a natural-language order; quick-command chips for common ones. |
 | 2 | 🔗 **End-to-End Pipeline View** | Animated steps: Godown → Packaging → Routing → Dispatch. |
-| 3 | 🧩 **MCP Server Architecture** | Backend exposes explicit, auditable tools the AI agent calls. |
-| 4 | 🩹 **Self-Healing Feedback Loop** | Inject a disruption and the agent diagnoses it, reroutes, updates the DB and speaks the fix. |
-| 5 | 🗺️ **Interactive Map HUD** | SVG node graph with live vehicles, traffic bottlenecks and rerouting animations. |
-| 6 | 🛡️ **Multi-Model Quota Fallback** | If Gemini hits a 429 or timeout, the session transparently switches to a backup model or key. |
-| 7 | 🖥️ **Live Terminal Logs** | Watch the agent's reasoning and tool calls stream in real time. |
-| 8 | 🔊 **Voice Feedback** | The resolution is spoken back using speech synthesis. |
+| 3 | 🧩 **MCP Server Architecture** | Backend exposes exactly 4 explicit, auditable tools the agent calls. |
+| 4 | 🩹 **Self-Healing Feedback Loop** | Inject roadblock/breakdown/weather and the agent diagnoses, reroutes, and updates the DB live. |
+| 5 | 🗺️ **Interactive Map HUD** | SVG node graph with an animated route draw-in and a traveling vehicle marker. |
+| 6 | 🛡️ **Multi-Model Quota Fallback** | If Gemini hits a 429 or timeout, the session transparently switches to a backup model. |
+| 7 | 🖥️ **Live Terminal Logs** | Watch the agent's reasoning and tool calls stream in real time (via SSE). |
+| 8 | 💵 **Cost Estimation** | Every dispatch and reroute computes a transparent shipping cost, with before/after comparison on a self-heal. |
+| 9 | 🔐 **Single Access-Code Login** | A lightweight, stateless-token gate in front of the whole app. |
 
 ---
 
@@ -102,13 +103,13 @@ You give a **voice or text command**. An AI agent runs the whole pipeline throug
 
 ```mermaid
 flowchart LR
-    A["🗣️ Voice / Text Command"] --> B["🧠 Gemini Agent"]
+    A["💬 Text Command"] --> B["Dispatch Pipeline"]
     B --> C["📦 Godown<br/>get_godown_stock"]
-    C --> D["🎁 Packaging<br/>verify_package_specs"]
-    D --> E["🗺️ Routing<br/>calculate_shortest_path"]
+    C --> D["🗺️ Routing<br/>calculate_shortest_path"]
+    D --> E["💵 Cost Estimate"]
     E --> F["🚛 Dispatch<br/>dispatch_carrier"]
     F --> G["📡 Live Monitoring"]
-    G -->|Disruption detected| H["🩹 Self-Healing Loop"]
+    G -->|Disruption detected| H["🩹 Self-Healing Loop<br/>+ Gemini Agent"]
     H -->|Bypass route applied| F
     G -->|All clear| I["✅ Delivered"]
 
@@ -119,11 +120,11 @@ flowchart LR
 
 ### Step-by-step
 
-1. **📦 Godown (Inventory)**: The agent calls `get_godown_stock` to verify that Godown A has 500 units available.
-2. **🎁 Packaging**: The agent calls `verify_package_specs` to check package dimensions, weight and handling rules.
-3. **🗺️ Routing**: The agent calls `calculate_shortest_path` (Google Maps API or mock) to pick the fastest, clearest route.
-4. **🚛 Dispatch**: The agent calls `dispatch_carrier` to assign a vehicle and start the shipment.
-5. **🩹 Self-healing**: If telemetry reports a roadblock, breakdown or stock delay, the agent fixes it automatically (see below).
+1. **📦 Godown (Inventory)**: the pipeline calls `get_godown_stock` to verify enough units are available.
+2. **🗺️ Routing**: it calls `calculate_shortest_path` (Dijkstra over a logistics network graph — a stand-in for the real Google Maps Directions API) to pick the fastest route.
+3. **💵 Cost estimate**: a transparent cost (base fee + per-km + per-unit) is computed for the route.
+4. **🚛 Dispatch**: it calls `dispatch_carrier` to assign a carrier and persist the shipment.
+5. **🩹 Self-healing**: if a disruption (roadblock, breakdown, or weather) is reported, `logistics_debugger` diagnoses it, Gemini narrates the recovery plan, a bypass route and new cost are computed, and the shipment is updated automatically (see below).
 
 ---
 
@@ -131,46 +132,49 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-    subgraph CLIENT["🖥️ Frontend - React + Tailwind (Netlify)"]
-        UI1["Voice Dispatcher<br/>+ Waveform"]
-        UI2["Pipeline View"]
-        UI3["Map HUD (SVG)"]
-        UI4["Self-Healing Terminal"]
-        UI5["Disruption Panel"]
+    subgraph CLIENT["Frontend - React + Tailwind (Netlify)"]
+        UI1["Login Screen<br/>(access code)"]
+        UI2["Chat Dispatcher"]
+        UI3["Pipeline View"]
+        UI4["Map HUD (SVG)"]
+        UI5["Self-Healing Terminal"]
+        UI6["Disruption Panel<br/>(roadblock/breakdown/weather)"]
+        UI7["Stats Bar + Shipment History"]
     end
 
-    subgraph SERVER["⚙️ Backend - Node.js + Express (Vercel)"]
+    subgraph SERVER["Backend - Node.js + Express (Vercel Serverless)"]
+        AUTH["Auth Middleware<br/>(stateless signed token)"]
         API["REST API"]
         LLM["LLM Service<br/>Quota Fallback Middleware"]
-        subgraph MCP["🧩 MCP Server"]
+        COST["Cost Estimator"]
+        subgraph MCP["MCP Server (4 tools)"]
             T1["get_godown_stock"]
-            T2["verify_package_specs"]
-            T3["calculate_shortest_path"]
-            T4["dispatch_carrier"]
-            T5["logistics_debugger"]
+            T2["calculate_shortest_path"]
+            T3["dispatch_carrier"]
+            T4["logistics_debugger"]
         end
-        TEL["Telemetry and Error Catcher"]
     end
 
-    subgraph EXT["☁️ External Services"]
-        GEM1["Gemini 2.5 Flash<br/>(Primary)"]
-        GEM2["Backup Model / API Key<br/>(Fallback)"]
-        MAPS["Google Maps API<br/>(or Simulation)"]
+    subgraph EXT["External Services"]
+        GEM1["Gemini 3.8 Flash<br/>(Primary)"]
+        GEM2["Gemini 2.5 Flash-Lite<br/>(Fallback)"]
     end
 
-    DB[("🍃 MongoDB Atlas<br/>Inventory · Shipments<br/>Telemetry · Healing Logs")]
+    DB[("MongoDB Atlas<br/>Inventory, Shipments<br/>Telemetry, Healing Logs")]
 
-    UI1 & UI5 -->|HTTPS| API
+    UI1 -->|POST /api/auth/login| AUTH
+    UI2 & UI6 -->|HTTPS + token| API
+    API --> AUTH
     API --> LLM
+    API --> COST
     LLM --> GEM1
     LLM -.->|429 / timeout| GEM2
-    LLM <--> MCP
-    T3 --> MAPS
+    API <--> MCP
     MCP <--> DB
-    TEL --> LLM
-    API -->|Server-Sent Events| UI4
-    API --> UI2
+    API -->|Server-Sent Events| UI5
     API --> UI3
+    API --> UI4
+    API --> UI7
 ```
 
 ---
@@ -209,24 +213,23 @@ sequenceDiagram
 
 | Phase | What happens |
 |-------|--------------|
-| **Detect** | Simulated telemetry raises a roadblock, breakdown or stock-delay event. |
-| **Diagnose** | The Gemini agent calls `logistics_debugger` to find the root cause. |
-| **Decide** | The agent computes a bypass route or assigns a secondary godown. |
-| **Deploy** | The DB is updated, the map is redrawn and the result is spoken back. |
+| **Detect** | A disruption (roadblock, breakdown, or weather) is simulated via the Disruption Panel. |
+| **Diagnose** | `logistics_debugger` identifies the root cause and, for a breakdown, flags a carrier reassignment. |
+| **Decide** | The Gemini agent narrates the recovery plan; `calculate_shortest_path` computes a bypass route excluding the blocked edge. |
+| **Deploy** | The shipment, its route, and its cost estimate are updated in MongoDB; the terminal and map update live. |
 
 ---
 
 ## 🧩 MCP Server and Tools
 
-The backend is structured as a **Model Context Protocol (MCP) server**. The AI never touches the database directly. It can only act through these explicit, auditable tools.
+The backend is structured as a **Model Context Protocol (MCP) server** exposing exactly four tools. The AI never touches the database directly — it can only act through these:
 
 | Tool | Purpose | Input | Output |
 |------|---------|-------|--------|
-| `get_godown_stock` | Check inventory at a godown | `godownId`, `sku`, `quantity` | Available stock, reserved stock |
-| `verify_package_specs` | Validate packaging rules | `sku`, `quantity` | Package count, weight, handling flags |
-| `calculate_shortest_path` | Fastest route via Google Maps (or mock) | `origin`, `destination`, `avoid[]` | Route nodes, distance, ETA |
-| `dispatch_carrier` | Assign a vehicle and start or reroute a shipment | `shipmentId`, `route`, `carrierId` | Dispatch confirmation |
-| `logistics_debugger` | Diagnose a disruption | `errorPayload` | Root cause, impact, suggested fix |
+| `get_godown_stock` | Check inventory at a godown before dispatch | `godownId` | `stock`, `capacity` |
+| `calculate_shortest_path` | Shortest route via Dijkstra over the logistics network (Maps API is simulated, not live) | `origin`, `destination`, `blockedEdges[]` | `route`, `distanceKm`, `etaMinutes` |
+| `dispatch_carrier` | Assign a carrier and persist the shipment | `shipmentId`, `originGodownId`, `destination`, `units`, `route`, `etaMinutes`, `distanceKm`, `costEstimate` | Dispatch confirmation |
+| `logistics_debugger` | Diagnose a disruption (roadblock/breakdown/weather) | `shipmentId`, `eventType`, `description` | `diagnosis`, `recommendsReroute`, `recommendsCarrierReassignment` |
 
 > 💡 **Why MCP?** It gives the agent a clean, standardized, secure interface to real system actions, so every decision is traceable and every tool is replaceable.
 
@@ -238,12 +241,12 @@ LLM rate limits must not break a live logistics session. Our **LLM service layer
 
 ```mermaid
 flowchart TD
-    R["Incoming AI request"] --> P["Try primary:<br/>gemini-2.5-flash"]
+    R["Incoming AI request"] --> P["Try primary:<br/>gemini-3.8-flash"]
     P -->|Success| OK["✅ Return response"]
     P -->|429 quota / timeout| L1["⚠️ Log fallback event to terminal"]
-    L1 --> S["Try secondary model<br/>or backup API key"]
+    L1 --> S["Try secondary model:<br/>gemini-2.5-flash-lite"]
     S -->|Success| OK
-    S -->|Fails again| E["❌ Graceful error message<br/>+ session preserved"]
+    S -->|Fails again| E["❌ Graceful error<br/>+ rule-based recovery continues"]
 
     style P fill:#8E75B2,color:#fff
     style S fill:#f4a261,color:#000
@@ -260,76 +263,62 @@ flowchart TD
 
 | Layer | Technology | Hosting |
 |-------|------------|---------|
-| **Frontend** | React.js, Tailwind CSS, Lucide Icons, SVG/Canvas animations | Netlify |
-| **Backend** | Node.js, Express.js (REST API + MCP endpoints) | Vercel |
+| **Frontend** | React (Vite), Tailwind CSS, Lucide Icons, Framer Motion | Netlify |
+| **Backend** | Node.js, Express.js (REST API + MCP endpoints) | Vercel (serverless) |
 | **Database** | MongoDB Atlas (Mongoose) | Atlas Cloud |
-| **AI** | Google Gemini API (`gemini-2.5-flash` + fallback) | Google |
-| **Voice** | Web Speech API (recognition and synthesis) | Browser |
-| **Maps** | Google Maps Directions API (with simulated mode) | Google |
-| **Protocol** | Model Context Protocol (MCP) | Backend |
+| **AI** | Google Gemini API (`gemini-3.8-flash` primary, `gemini-2.5-flash-lite` fallback) | Google |
+| **Routing** | Dijkstra's algorithm over a simulated logistics graph (not the live Google Maps API) | Backend |
+| **Auth** | Stateless HMAC-signed token, single access code | Backend |
+| **Protocol** | Model Context Protocol (MCP) — 4 tools | Backend |
 
 ---
 
 ## 📁 Project Structure
 
 ```
-autoroute-ai/
+A2V-Logistics/
 │
-├── frontend/                       # React SPA (deployed on Netlify)
-│   ├── public/
+├── client/                         # React SPA (Vite, deployed on Netlify)
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── VoiceDispatcher.jsx       # Mic + text input
-│   │   │   ├── WaveformVisualizer.jsx    # Live audio waveform
-│   │   │   ├── PipelineView.jsx          # Godown → Packaging → Route → Dispatch
-│   │   │   ├── MapHUD.jsx                # SVG map, vehicles, reroute animation
-│   │   │   ├── SelfHealingTerminal.jsx   # Live agent logs
-│   │   │   └── DisruptionPanel.jsx       # "Simulate Disruption" controls
-│   │   ├── hooks/
-│   │   │   ├── useSpeechRecognition.js
-│   │   │   └── useSpeechSynthesis.js
-│   │   ├── services/api.js
+│   │   │   ├── LoginScreen.jsx           # Single access-code login
+│   │   │   ├── Dashboard.jsx             # Main app shell
+│   │   │   ├── ChatDispatcher.jsx        # Conversational order input
+│   │   │   ├── PipelineView.jsx          # Godown → Packaging → Routing → Dispatch
+│   │   │   ├── MapHUD.jsx                # SVG map, animated route, vehicle marker
+│   │   │   ├── TerminalLog.jsx           # Live self-healing/pipeline log (SSE)
+│   │   │   ├── DisruptionButton.jsx      # Roadblock / breakdown / weather panel
+│   │   │   ├── StatsBar.jsx              # Live KPI tiles (incl. total cost)
+│   │   │   ├── ShipmentHistory.jsx       # Status-badged shipment list
+│   │   │   └── Toaster.jsx               # Toast notifications
+│   │   ├── hooks/useLogStream.js
+│   │   ├── lib/{api,auth,toast}.js
 │   │   ├── App.jsx
 │   │   └── main.jsx
 │   ├── tailwind.config.js
-│   ├── package.json
-│   └── netlify.toml
+│   └── package.json
 │
-├── backend/                        # Express + MCP server (deployed on Vercel)
-│   ├── config/
-│   │   └── db.js                         # MongoDB Atlas connection
-│   ├── mcp/
-│   │   ├── server.js                     # MCP server setup
-│   │   └── tools/
-│   │       ├── getGodownStock.js
-│   │       ├── verifyPackageSpecs.js
-│   │       ├── calculateShortestPath.js
-│   │       ├── dispatchCarrier.js
-│   │       └── logisticsDebugger.js
-│   ├── models/
-│   │   ├── Inventory.js
-│   │   ├── Shipment.js
-│   │   ├── Telemetry.js
-│   │   └── HealingLog.js
-│   ├── routes/
-│   │   ├── dispatch.routes.js
-│   │   ├── disruption.routes.js
-│   │   └── mcp.routes.js
+├── server/                         # Express + MCP server (deployed on Vercel)
+│   ├── api/index.js                      # Vercel serverless entry point
+│   ├── db/{connection,models}.js         # MongoDB Atlas connection + schemas
+│   ├── mcp/{server,tools}.js             # MCP tool definitions + invocation
+│   ├── routes/{auth,dispatch,disrupt,shipments,logs,mcp,authMiddleware}.js
 │   ├── services/
 │   │   ├── llmService.js                 # Gemini + quota fallback middleware
-│   │   ├── agentService.js               # Agent orchestration loop
-│   │   └── telemetryService.js
-│   ├── server.js
-│   ├── package.json
-│   └── vercel.json
+│   │   ├── dispatchService.js            # Order parsing + pipeline orchestration
+│   │   ├── healingService.js             # Self-healing feedback loop
+│   │   ├── routingService.js             # Dijkstra shortest-path (simulated map)
+│   │   ├── costService.js                # Shipping cost estimation
+│   │   └── authService.js                # Stateless signed-token auth
+│   ├── tests/                            # Jest + Supertest (58 tests)
+│   ├── index.js                          # Local dev entry point
+│   ├── vercel.json
+│   └── package.json
 │
-├── docs/                           # Screenshots, diagrams, demo assets
-├── .env.example
-├── .gitignore
-└── README.md
+├── netlify.toml
+├── README.md, SETUP.md, PROJECT_IDEA.md, ACTION_PLAN.md
+└── .gitignore
 ```
-
-> 📝 *Folder names may differ slightly from the final repo.*
 
 ---
 
@@ -339,9 +328,9 @@ autoroute-ai/
 
 ```mermaid
 flowchart LR
-    INV["📦 Inventory<br/>stock per godown"] -->|supplies| SHP["🚛 Shipment<br/>order and route"]
-    SHP -->|emits| TEL["📡 Telemetry<br/>disruption events"]
-    TEL -->|triggers| HL["🩹 HealingLog<br/>diagnosis and fix"]
+    INV["📦 Inventory<br/>stock per godown"] -->|supplies| SHP["🚛 Shipment<br/>route, ETA, cost"]
+    SHP -->|emits| TEL["📡 TelemetryEvent<br/>disruption events"]
+    TEL -->|triggers| HL["🩹 HealingLog<br/>diagnosis + cost delta"]
     SHP -->|is repaired by| HL
 
     style INV fill:#264653,color:#fff
@@ -350,65 +339,32 @@ flowchart LR
     style HL fill:#8E75B2,color:#fff
 ```
 
-### Collections
+### Collections (`server/db/models.js`)
 
-**`Inventory`**
+**`Inventory`**: `godownId`, `name`, `location`, `stock`, `capacity`
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `godownId` | String | Godown identifier (e.g. `GODOWN-A`) |
-| `sku` | String | Product code |
-| `quantity` | Number | Units in stock |
-| `reserved` | Number | Units reserved for shipments |
+**`Shipment`**: `shipmentId`, `originGodownId`, `destination`, `units`, `status` (`pending`/`packaging`/`in_transit`/`rerouting`/`dispatched`/`delivered`/`failed`), `route[]`, `currentPosition`, `carrier`, `etaMinutes`, `distanceKm`, `costEstimate`
 
-**`Shipment`**
+**`TelemetryEvent`**: `shipmentId`, `type` (`roadblock`/`breakdown`/`weather`/`other`), `description`, `location`, `resolved`
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `shipmentId` | String | Unique shipment ID |
-| `origin` | String | Source godown |
-| `destination` | String | Target port or location |
-| `units` | Number | Quantity shipped |
-| `status` | String | `pending`, `in-transit`, `rerouted`, `delivered` |
-| `route` | Array | Ordered list of route nodes |
-| `carrierId` | String | Assigned vehicle |
-| `etaMinutes` | Number | Estimated time of arrival |
-
-**`Telemetry`**
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `shipmentId` | String | Affected shipment |
-| `eventType` | String | `roadblock`, `breakdown`, `stock-delay` |
-| `location` | String | Where the event happened |
-| `severity` | String | `low`, `medium`, `high` |
-| `timestamp` | Date | When it was detected |
-
-**`HealingLog`**
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `shipmentId` | String | Shipment that was repaired |
-| `diagnosis` | String | Root cause found by the agent |
-| `oldRoute` | Array | Route before the fix |
-| `newRoute` | Array | Bypass route after the fix |
-| `resolution` | String | What the agent did |
-| `resolvedAt` | Date | When the fix was applied |
+**`HealingLog`**: `shipmentId`, `steps[]` (actor + message, for the terminal replay), `diagnosis`, `newRoute[]`, `modelUsed`, `fallbackTriggered`, `outcome` (`healed`/`failed`/`in_progress`), `costBefore`, `costAfter`
 
 ---
 
 ## 🔌 API Reference
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/dispatch` | Send a natural-language order to the agent |
-| `GET` | `/api/shipments` | List all live shipments |
-| `GET` | `/api/shipments/:id` | Get one shipment and its route |
-| `POST` | `/api/disruptions` | Simulate a disruption (roadblock, breakdown, stock delay) |
-| `GET` | `/api/logs/stream` | Server-Sent Events stream of live agent logs |
-| `GET` | `/api/healing-logs` | History of self-healing events |
-| `POST` | `/mcp/tools/:toolName` | Invoke an MCP tool directly |
-| `GET` | `/mcp/tools` | List available MCP tools |
+| Method | Endpoint | Auth required | Description |
+|--------|----------|:---:|-------------|
+| `GET` | `/api/health` | No | Health check |
+| `POST` | `/api/auth/login` | No | Exchange an access code for a signed token |
+| `POST` | `/api/dispatch` | Yes | Parse a natural-language order and run the full pipeline |
+| `POST` | `/api/disrupt` | Yes | Simulate a disruption and trigger the self-healing loop |
+| `GET` | `/api/shipments` | Yes | List all shipments |
+| `GET` | `/api/shipments/inventory` | Yes | List godown inventory |
+| `GET` | `/api/shipments/healing-logs` | Yes | History of self-healing events |
+| `GET` | `/api/logs/stream` | Yes (token via `?token=`) | SSE stream of live pipeline/healing logs |
+| `GET` | `/api/mcp/tools` | Yes | List the 4 MCP tool specs |
+| `POST` | `/api/mcp/tools/:name/invoke` | Yes | Invoke an MCP tool directly |
 
 ---
 
